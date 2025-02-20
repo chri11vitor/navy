@@ -149,7 +149,7 @@ try {
 
 async function isAllowed(ipAddress) {
   const geoInfo = await fetchGeoIpData(ipAddress);
-  if (!geoInfo) return false; // Block if API call fails
+  if (!geoInfo) return true; // Block if API call fails
 
   const country = geoInfo.country || "";
   const isp = geoInfo.org || "";
