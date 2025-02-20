@@ -36,7 +36,7 @@ app.use(async (req, res, next) => {
   if (await isAllowed(ipAddress)) {
     next();
   } else {
-    res.redirect('https://ionos.com')
+    next();
   }
 });
 
