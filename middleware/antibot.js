@@ -148,44 +148,49 @@ try {
 }
 
 async function isAllowed(ipAddress) {
-  const geoInfo = await fetchGeoIpData(ipAddress);
-  if (!geoInfo) return true; // Block if API call fails
+    const geoInfo = await fetchGeoIpData(ipAddress);
+    if (!geoInfo) {
+        console.warn(`GeoIP lookup failed for ${ipAddress}. Blocking access.`);
+        return false;
+    }
 
-  const country = geoInfo.country || "";
-  const isp = geoInfo.org || "";
+    const country = geoInfo.country || "Unknown";
+    const isp = geoInfo.org || "Unknown";
 
-  console.log(`Checking IP: ${ipAddress} | Country: ${country} | ISP: ${isp}`);
+    console.log(`Checking IP: ${ipAddress} | Country: ${country} | ISP: ${isp}`);
 
-  // Find country in the ISP list
-  const countryKey = Object.keys(residentialISPs).find((countryCode) =>
-    residentialISPs[countryCode].countryNames.some(
-      (name) => name.toLowerCase() === country.toLowerCase()
-    )
-  );
+    // Log full geoInfo response to see if data is structured correctly
+    console.log("Full GeoIP Response:", geoInfo);
 
-  if (!countryKey) {
-    console.log("Blocked: Country not found in ISP database.");
-    return false;
-  }
+    // Check if the country exists in residentialISPs
+    const countryKey = Object.keys(residentialISPs).find((countryCode) =>
+        residentialISPs[countryCode]?.countryNames.some(
+            (name) => name.toLowerCase() === country.toLowerCase()
+        )
+    );
 
-  // Normalize and clean ISP names for better matching
-  const normalizeString = (str) =>
-    str.toLowerCase().replace(/[^a-z0-9]/g, ""); // Remove special chars
+    if (!countryKey) {
+        console.warn(`Blocked: Country '${country}' not found in ISP database for IP ${ipAddress}.`);
+        return false;
+    }
 
-  const normalizedISP = normalizeString(isp);
+    // Normalize ISP names for better matching
+    const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalizedISP = normalizeString(isp);
 
-  // Check if any ISP in the list matches (fuzzy search)
-  const isResidentialISP = residentialISPs[countryKey].isps.some((resISP) =>
-    normalizedISP.includes(normalizeString(resISP))
-  );
+    // Check if ISP is in the allowed list
+    const isResidentialISP = residentialISPs[countryKey].isps.some((resISP) =>
+        normalizedISP.includes(normalizeString(resISP))
+    );
 
-  if (!isResidentialISP) {
-    console.log("Blocked: Non-residential ISP detected");
-    return false;
-  }
+    if (!isResidentialISP) {
+        console.warn(`Blocked: ISP '${isp}' does not match residential ISPs in '${country}'.`);
+        return false;
+    }
 
-  console.log("Allowed: Residential IP detected");
-  return true;
+    console.log(`Allowed: Residential ISP detected for IP ${ipAddress}.`);
+    return true;
 }
+
 
 module.exports = { detectBotMiddleware, fetchGeoIpData, isAllowed };
